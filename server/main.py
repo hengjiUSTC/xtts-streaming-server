@@ -29,7 +29,7 @@ print("Loading XTTS",flush=True)
 config = XttsConfig()
 config.load_json(os.path.join(model_path, "config.json"))
 model = Xtts.init_from_config(config)
-model.load_checkpoint(config, checkpoint_dir=model_path, eval=True, use_deepspeed=True)
+model.load_checkpoint(config, checkpoint_dir=model_path, eval=True, use_deepspeed=False)
 model.to(device)
 print("XTTS Loaded.",flush=True)
 
