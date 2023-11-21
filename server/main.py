@@ -23,7 +23,7 @@ from TTS.utils.manage import ModelManager
 torch.set_num_threads(2)
 device = torch.device("cuda")
 
-model_path = '/home/ubuntu//XTTS-v2/'
+model_path = '/home/ubuntu/XTTS-v2/'
 
 print("Loading XTTS",flush=True)
 config = XttsConfig()
@@ -40,7 +40,7 @@ app = FastAPI(
     title="XTTS Streaming server",
     description="""XTTS Streaming server""",
     version="0.0.1",
-    docs_url="/",
+    docs_url="/jhdc",
 )
 
 
