@@ -20,7 +20,7 @@ from TTS.tts.models.xtts import Xtts
 from TTS.utils.generic_utils import get_user_data_dir
 from TTS.utils.manage import ModelManager
 
-torch.set_num_threads(int(os.environ.get("NUM_THREADS", "2")))
+torch.set_num_threads(2)
 device = torch.device("cuda")
 
 model_path = '/home/ubuntu//XTTS-v2/'
