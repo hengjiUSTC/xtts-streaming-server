@@ -170,6 +170,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
 @app.post("/tts_stream")
 async def predict_streaming_endpoint(parsed_input: StreamingInputs):
     async with semaphore:
+        print('enter')
         try:
             return StreamingResponse(
                 predict_streaming_generator(parsed_input),
