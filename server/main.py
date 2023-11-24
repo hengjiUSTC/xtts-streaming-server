@@ -51,7 +51,7 @@ app = FastAPI(
 
 
 @app.post("/clone_speaker")
-async def predict_speaker(wav_file: UploadFile):
+def predict_speaker(wav_file: UploadFile):
     """Compute conditioning inputs from reference audio file."""
     # temp_audio_name = next(tempfile._get_candidate_names())
     # with open(temp_audio_name, "wb") as temp, torch.inference_mode():
@@ -59,7 +59,7 @@ async def predict_speaker(wav_file: UploadFile):
     #     gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
     #         temp_audio_name
     #     )
-    async with semaphore:
+    with semaphore:
         with tempfile.NamedTemporaryFile(delete=True) as temp:
             temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
             temp.flush()  # Ensure all data is written to the file
@@ -168,13 +168,10 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
 #         media_type="audio/wav",
 #     )
 @app.post("/tts_stream")
-async def predict_streaming_endpoint(parsed_input: StreamingInputs):
-    async with semaphore:
+def predict_streaming_endpoint(parsed_input: StreamingInputs):
+    with semaphore:
         print('enter')
-        try:
-            return StreamingResponse(
+        return StreamingResponse(
                 predict_streaming_generator(parsed_input),
                 media_type="audio/wav",
             )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
