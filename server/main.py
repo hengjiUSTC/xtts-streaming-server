@@ -129,7 +129,7 @@ class StreamingInputs(BaseModel):
 
 
 def predict_streaming_generator(parsed_input: dict = Body(...)):
-    print('enter')
+    print('predict_streaming_generator')
     speaker_embedding = (
         torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
     )
@@ -170,7 +170,7 @@ def streaming_wrapper(lock, streaming_generator):
     finally:
         # Release the semaphore when streaming is done
         print('release')
-        # lock.release()
+        lock.release()
 
 # @app.post("/tts_stream")
 # def predict_streaming_endpoint(parsed_input: StreamingInputs):
@@ -181,7 +181,7 @@ def streaming_wrapper(lock, streaming_generator):
 @app.post("/tts_stream")
 def predict_streaming_endpoint(parsed_input: StreamingInputs):
     # Acquire the semaphore
-    # lock.acquire()
+    lock.acquire()
     print('enter')
     # Wrap the original generator
     wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
