@@ -1,8 +1,8 @@
+from asyncio import Semaphore
 import base64
 import io
 import os
 import tempfile
-from threading import Semaphore
 from typing import List, Literal
 import wave
 
@@ -51,7 +51,7 @@ app = FastAPI(
 
 
 @app.post("/clone_speaker")
-def predict_speaker(wav_file: UploadFile):
+async def predict_speaker(wav_file: UploadFile):
     """Compute conditioning inputs from reference audio file."""
     # temp_audio_name = next(tempfile._get_candidate_names())
     # with open(temp_audio_name, "wb") as temp, torch.inference_mode():
@@ -128,37 +128,39 @@ class StreamingInputs(BaseModel):
     stream_chunk_size: str = "20"
 
 
-def predict_streaming_generator(parsed_input: dict = Body(...)):
-    speaker_embedding = (
-        torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
-    )
-    gpt_cond_latent = (
-        torch.tensor(parsed_input.gpt_cond_latent).reshape((-1, 1024)).unsqueeze(0)
-    )
-    text = parsed_input.text
-    language = parsed_input.language
+async def predict_streaming_generator(parsed_input: dict = Body(...)):
+    async with semaphore:
+        print('enter', parsed_input)
+        speaker_embedding = (
+            torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
+        )
+        gpt_cond_latent = (
+            torch.tensor(parsed_input.gpt_cond_latent).reshape((-1, 1024)).unsqueeze(0)
+        )
+        text = parsed_input.text
+        language = parsed_input.language
 
-    stream_chunk_size = int(parsed_input.stream_chunk_size)
-    add_wav_header = parsed_input.add_wav_header
+        stream_chunk_size = int(parsed_input.stream_chunk_size)
+        add_wav_header = parsed_input.add_wav_header
 
 
-    chunks = model.inference_stream(
-        text,
-        language,
-        gpt_cond_latent,
-        speaker_embedding,
-        stream_chunk_size=stream_chunk_size,
-        enable_text_splitting=True,
-        speed=1.2
-    )
+        chunks = model.inference_stream(
+            text,
+            language,
+            gpt_cond_latent,
+            speaker_embedding,
+            stream_chunk_size=stream_chunk_size,
+            enable_text_splitting=True,
+            speed=1.2
+        )
 
-    for i, chunk in enumerate(chunks):
-        chunk = postprocess(chunk)
-        if i == 0 and add_wav_header:
-            yield encode_audio_common(b"", encode_base64=False)
-            yield chunk.tobytes()
-        else:
-            yield chunk.tobytes()
+        for i, chunk in enumerate(chunks):
+            chunk = postprocess(chunk)
+            if i == 0 and add_wav_header:
+                yield encode_audio_common(b"", encode_base64=False)
+                yield chunk.tobytes()
+            else:
+                yield chunk.tobytes()
 
 
 # @app.post("/tts_stream")
@@ -169,9 +171,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
 #     )
 @app.post("/tts_stream")
 def predict_streaming_endpoint(parsed_input: StreamingInputs):
-    with semaphore:
-        print('enter')
-        return StreamingResponse(
-                predict_streaming_generator(parsed_input),
-                media_type="audio/wav",
-            )
+    return StreamingResponse(
+            predict_streaming_generator(parsed_input),
+            media_type="audio/wav",
+        )
