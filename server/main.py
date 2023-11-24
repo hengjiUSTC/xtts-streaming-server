@@ -175,10 +175,9 @@ async def predict_streaming_generator(acquired_semaphore: Semaphore, parsed_inpu
 @app.post("/tts_stream")
 async def predict_streaming_endpoint(parsed_input: StreamingInputs):
     await semaphore.acquire()
-    print('enter')
     try:
         return StreamingResponse(
-            predict_streaming_generator(parsed_input, semaphore),
+            predict_streaming_generator(semaphore, parsed_input),
             media_type="audio/wav",
         )
     except Exception as e:
