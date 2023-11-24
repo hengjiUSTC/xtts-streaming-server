@@ -171,6 +171,7 @@ def streaming_wrapper(lock, streaming_generator):
             yield item
     finally:
         # Release the semaphore when streaming is done
+        print('release')
         lock.release()
 
 # @app.post("/tts_stream")
