@@ -28,8 +28,6 @@ device = torch.device("cuda")
 
 model_path = '/home/ubuntu/XTTS-v2/'
 
-concurrent_request_limit = 1
-semaphore = Semaphore(concurrent_request_limit)
 # Create a lock
 lock = Lock()
 
@@ -62,17 +60,16 @@ async def predict_speaker(wav_file: UploadFile):
     #     gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
     #         temp_audio_name
     #     )
-    with semaphore:
-        with tempfile.NamedTemporaryFile(delete=True) as temp:
-            temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
-            temp.flush()  # Ensure all data is written to the file
-            gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
-                temp.name
-            )
-        return {
-            "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
-            "speaker_embedding": speaker_embedding.cpu().squeeze().half().tolist(),
-        }
+    with tempfile.NamedTemporaryFile(delete=True) as temp:
+        temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
+        temp.flush()  # Ensure all data is written to the file
+        gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
+            temp.name
+        )
+    return {
+        "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
+        "speaker_embedding": speaker_embedding.cpu().squeeze().half().tolist(),
+    }
 
 
 def postprocess(wav):
@@ -183,10 +180,10 @@ def streaming_wrapper(lock, streaming_generator):
 @app.post("/tts_stream")
 def predict_streaming_endpoint(parsed_input: StreamingInputs):
     # Acquire the semaphore
-    lock.acquire()
+    # lock.acquire()
     print('enter')
     # Wrap the original generator
-    wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
+    # wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
 
     # Create a StreamingResponse with the wrapped generator
-    return StreamingResponse(wrapped_generator, media_type="audio/wav")
+    return StreamingResponse(predict_streaming_generator(parsed_input), media_type="audio/wav")
