@@ -1,3 +1,4 @@
+from asyncio import Semaphore
 import base64
 import io
 import os
@@ -11,6 +12,7 @@ from fastapi import (
     FastAPI,
     UploadFile,
     Body,
+    HTTPException,
 )
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
@@ -24,6 +26,10 @@ torch.set_num_threads(2)
 device = torch.device("cuda")
 
 model_path = '/home/ubuntu/XTTS-v2/'
+
+concurrent_request_limit = 1
+semaphore = Semaphore(concurrent_request_limit)
+
 
 print("Loading XTTS",flush=True)
 config = XttsConfig()
@@ -45,7 +51,7 @@ app = FastAPI(
 
 
 @app.post("/clone_speaker")
-def predict_speaker(wav_file: UploadFile):
+async def predict_speaker(wav_file: UploadFile):
     """Compute conditioning inputs from reference audio file."""
     # temp_audio_name = next(tempfile._get_candidate_names())
     # with open(temp_audio_name, "wb") as temp, torch.inference_mode():
@@ -53,16 +59,17 @@ def predict_speaker(wav_file: UploadFile):
     #     gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
     #         temp_audio_name
     #     )
-    with tempfile.NamedTemporaryFile(delete=True) as temp:
-        temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
-        temp.flush()  # Ensure all data is written to the file
-        gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
-            temp.name
-        )
-    return {
-        "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
-        "speaker_embedding": speaker_embedding.cpu().squeeze().half().tolist(),
-    }
+    async with semaphore:
+        with tempfile.NamedTemporaryFile(delete=True) as temp:
+            temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
+            temp.flush()  # Ensure all data is written to the file
+            gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
+                temp.name
+            )
+        return {
+            "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
+            "speaker_embedding": speaker_embedding.cpu().squeeze().half().tolist(),
+        }
 
 
 def postprocess(wav):
@@ -154,9 +161,19 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
             yield chunk.tobytes()
 
 
+# @app.post("/tts_stream")
+# def predict_streaming_endpoint(parsed_input: StreamingInputs):
+#     return StreamingResponse(
+#         predict_streaming_generator(parsed_input),
+#         media_type="audio/wav",
+#     )
 @app.post("/tts_stream")
-def predict_streaming_endpoint(parsed_input: StreamingInputs):
-    return StreamingResponse(
-        predict_streaming_generator(parsed_input),
-        media_type="audio/wav",
-    )
+async def predict_streaming_endpoint(parsed_input: StreamingInputs):
+    async with semaphore:
+        try:
+            return StreamingResponse(
+                predict_streaming_generator(parsed_input),
+                media_type="audio/wav",
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
