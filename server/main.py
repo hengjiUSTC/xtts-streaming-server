@@ -128,42 +128,39 @@ class StreamingInputs(BaseModel):
     stream_chunk_size: str = "20"
 
 
-async def predict_streaming_generator(acquired_semaphore: Semaphore, parsed_input: dict = Body(...)):
-    try:
-        print('enter')
-        speaker_embedding = (
-            torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
-        )
-        gpt_cond_latent = (
-            torch.tensor(parsed_input.gpt_cond_latent).reshape((-1, 1024)).unsqueeze(0)
-        )
-        text = parsed_input.text
-        language = parsed_input.language
+async def predict_streaming_generator(parsed_input: dict = Body(...)):
+    print('enter')
+    speaker_embedding = (
+        torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
+    )
+    gpt_cond_latent = (
+        torch.tensor(parsed_input.gpt_cond_latent).reshape((-1, 1024)).unsqueeze(0)
+    )
+    text = parsed_input.text
+    language = parsed_input.language
 
-        stream_chunk_size = int(parsed_input.stream_chunk_size)
-        add_wav_header = parsed_input.add_wav_header
+    stream_chunk_size = int(parsed_input.stream_chunk_size)
+    add_wav_header = parsed_input.add_wav_header
 
 
-        chunks = model.inference_stream(
-            text,
-            language,
-            gpt_cond_latent,
-            speaker_embedding,
-            stream_chunk_size=stream_chunk_size,
-            enable_text_splitting=True,
-            speed=1.2
-        )
+    chunks = model.inference_stream(
+        text,
+        language,
+        gpt_cond_latent,
+        speaker_embedding,
+        stream_chunk_size=stream_chunk_size,
+        enable_text_splitting=True,
+        speed=1.2
+    )
 
-        for i, chunk in enumerate(chunks):
-            chunk = postprocess(chunk)
-            if i == 0 and add_wav_header:
-                yield encode_audio_common(b"", encode_base64=False)
-                yield chunk.tobytes()
-            else:
-                yield chunk.tobytes()
-    finally:
-        print('Generator: Releasing semaphore')
-        acquired_semaphore.release()
+    for i, chunk in enumerate(chunks):
+        chunk = postprocess(chunk)
+        if i == 0 and add_wav_header:
+            yield encode_audio_common(b"", encode_base64=False)
+            yield chunk.tobytes()
+        else:
+            yield chunk.tobytes()
+
 
 
 # @app.post("/tts_stream")
