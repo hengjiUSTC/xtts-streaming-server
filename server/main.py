@@ -161,10 +161,10 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
         else:
             yield chunk.tobytes()
 
-async def streaming_wrapper(semaphore, streaming_generator):
+def streaming_wrapper(semaphore, streaming_generator):
     try:
         # Yield from the original streaming generator
-        async for item in streaming_generator:
+        for item in streaming_generator:
             yield item
     finally:
         # Release the semaphore when streaming is done
