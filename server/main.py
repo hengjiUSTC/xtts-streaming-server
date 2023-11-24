@@ -128,7 +128,7 @@ class StreamingInputs(BaseModel):
     stream_chunk_size: str = "20"
 
 
-async def predict_streaming_generator(parsed_input: dict = Body(...)):
+def predict_streaming_generator(parsed_input: dict = Body(...)):
     print('enter')
     speaker_embedding = (
         torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
@@ -161,7 +161,14 @@ async def predict_streaming_generator(parsed_input: dict = Body(...)):
         else:
             yield chunk.tobytes()
 
-
+async def streaming_wrapper(semaphore, streaming_generator):
+    try:
+        # Yield from the original streaming generator
+        async for item in streaming_generator:
+            yield item
+    finally:
+        # Release the semaphore when streaming is done
+        semaphore.release()
 
 # @app.post("/tts_stream")
 # def predict_streaming_endpoint(parsed_input: StreamingInputs):
@@ -169,33 +176,13 @@ async def predict_streaming_generator(parsed_input: dict = Body(...)):
 #         predict_streaming_generator(parsed_input),
 #         media_type="audio/wav",
 #     )
-# @app.post("/tts_stream")
-# def predict_streaming_endpoint(parsed_input: StreamingInputs):
-#     return StreamingResponse(
-#         predict_streaming_generator(semaphore, parsed_input),
-#         media_type="audio/wav",
-#     )
-
-is_streaming_active = False
-
 @app.post("/tts_stream")
 async def predict_streaming_endpoint(parsed_input: StreamingInputs):
-    global is_streaming_active
+    # Acquire the semaphore
+    await semaphore.acquire()
+    print('enter')
+    # Wrap the original generator
+    wrapped_generator = streaming_wrapper(semaphore, predict_streaming_generator(parsed_input))
 
-    # Check if a stream is already active
-    if is_streaming_active:
-        raise HTTPException(status_code=429, detail="A stream is already in progress. Please try again later.")
-
-    # Set the flag to indicate a stream is active
-    is_streaming_active = True
-
-    try:
-        # Start streaming
-        response = StreamingResponse(
-            predict_streaming_generator(parsed_input),
-            media_type="audio/wav",
-        )
-        return response
-    finally:
-        # Reset the flag once streaming is done
-        is_streaming_active = False
+    # Create a StreamingResponse with the wrapped generator
+    return StreamingResponse(wrapped_generator, media_type="audio/wav")
