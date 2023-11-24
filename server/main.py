@@ -183,7 +183,7 @@ def predict_streaming_endpoint(parsed_input: StreamingInputs):
     # lock.acquire()
     print('enter')
     # Wrap the original generator
-    # wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
+    wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
 
     # Create a StreamingResponse with the wrapped generator
-    return StreamingResponse(predict_streaming_generator(parsed_input), media_type="audio/wav")
+    return StreamingResponse(wrapped_generator, media_type="audio/wav")
