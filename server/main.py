@@ -172,14 +172,33 @@ async def predict_streaming_generator(acquired_semaphore: Semaphore, parsed_inpu
 #         predict_streaming_generator(parsed_input),
 #         media_type="audio/wav",
 #     )
+# @app.post("/tts_stream")
+# def predict_streaming_endpoint(parsed_input: StreamingInputs):
+#     return StreamingResponse(
+#         predict_streaming_generator(semaphore, parsed_input),
+#         media_type="audio/wav",
+#     )
+
+is_streaming_active = False
+
 @app.post("/tts_stream")
 async def predict_streaming_endpoint(parsed_input: StreamingInputs):
-    await semaphore.acquire()
+    global is_streaming_active
+
+    # Check if a stream is already active
+    if is_streaming_active:
+        raise HTTPException(status_code=429, detail="A stream is already in progress. Please try again later.")
+
+    # Set the flag to indicate a stream is active
+    is_streaming_active = True
+
     try:
-        return StreamingResponse(
-            predict_streaming_generator(semaphore, parsed_input),
+        # Start streaming
+        response = StreamingResponse(
+            predict_streaming_generator(parsed_input),
             media_type="audio/wav",
         )
-    except Exception as e:
-        semaphore.release()  # Ensure semaphore is released in case of error
-        raise HTTPException(status_code=500, detail=str(e))
+        return response
+    finally:
+        # Reset the flag once streaming is done
+        is_streaming_active = False
