@@ -164,14 +164,14 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
         else:
             yield chunk.tobytes()
 
-def streaming_wrapper(semaphore, streaming_generator):
+def streaming_wrapper(lock, streaming_generator):
     try:
         # Yield from the original streaming generator
         for item in streaming_generator:
             yield item
     finally:
         # Release the semaphore when streaming is done
-        semaphore.release()
+        lock.release()
 
 # @app.post("/tts_stream")
 # def predict_streaming_endpoint(parsed_input: StreamingInputs):
@@ -185,7 +185,7 @@ def predict_streaming_endpoint(parsed_input: StreamingInputs):
     lock.acquire()
     print('enter')
     # Wrap the original generator
-    wrapped_generator = streaming_wrapper(semaphore, predict_streaming_generator(parsed_input))
+    wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
 
     # Create a StreamingResponse with the wrapped generator
     return StreamingResponse(wrapped_generator, media_type="audio/wav")
