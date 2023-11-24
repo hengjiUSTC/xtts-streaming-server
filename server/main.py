@@ -3,6 +3,7 @@ import base64
 import io
 import os
 import tempfile
+from threading import Lock
 from typing import List, Literal
 import wave
 
@@ -29,6 +30,8 @@ model_path = '/home/ubuntu/XTTS-v2/'
 
 concurrent_request_limit = 1
 semaphore = Semaphore(concurrent_request_limit)
+# Create a lock
+lock = Lock()
 
 
 print("Loading XTTS",flush=True)
@@ -177,9 +180,9 @@ def streaming_wrapper(semaphore, streaming_generator):
 #         media_type="audio/wav",
 #     )
 @app.post("/tts_stream")
-async def predict_streaming_endpoint(parsed_input: StreamingInputs):
+def predict_streaming_endpoint(parsed_input: StreamingInputs):
     # Acquire the semaphore
-    await semaphore.acquire()
+    lock.acquire()
     print('enter')
     # Wrap the original generator
     wrapped_generator = streaming_wrapper(semaphore, predict_streaming_generator(parsed_input))
