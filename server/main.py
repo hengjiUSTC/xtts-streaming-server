@@ -47,11 +47,17 @@ app = FastAPI(
 @app.post("/clone_speaker")
 def predict_speaker(wav_file: UploadFile):
     """Compute conditioning inputs from reference audio file."""
-    temp_audio_name = next(tempfile._get_candidate_names())
-    with open(temp_audio_name, "wb") as temp, torch.inference_mode():
+    # temp_audio_name = next(tempfile._get_candidate_names())
+    # with open(temp_audio_name, "wb") as temp, torch.inference_mode():
+    #     temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
+    #     gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
+    #         temp_audio_name
+    #     )
+    with tempfile.NamedTemporaryFile(delete=True) as temp:
         temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
+        temp.flush()  # Ensure all data is written to the file
         gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
-            temp_audio_name
+            temp.name
         )
     return {
         "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
