@@ -130,7 +130,7 @@ class StreamingInputs(BaseModel):
 
 async def predict_streaming_generator(parsed_input: dict = Body(...)):
     async with semaphore:
-        print('enter', parsed_input)
+        print('enter')
         speaker_embedding = (
             torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
         )
