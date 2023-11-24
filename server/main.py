@@ -155,6 +155,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
 
     for i, chunk in enumerate(chunks):
         chunk = postprocess(chunk)
+        print('loop')
         if i == 0 and add_wav_header:
             yield encode_audio_common(b"", encode_base64=False)
             yield chunk.tobytes()
@@ -169,7 +170,7 @@ def streaming_wrapper(lock, streaming_generator):
     finally:
         # Release the semaphore when streaming is done
         print('release')
-        lock.release()
+        # lock.release()
 
 # @app.post("/tts_stream")
 # def predict_streaming_endpoint(parsed_input: StreamingInputs):
