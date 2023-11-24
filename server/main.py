@@ -128,8 +128,8 @@ class StreamingInputs(BaseModel):
     stream_chunk_size: str = "20"
 
 
-async def predict_streaming_generator(parsed_input: dict = Body(...)):
-    async with semaphore:
+async def predict_streaming_generator(acquired_semaphore: Semaphore, parsed_input: dict = Body(...)):
+    try:
         print('enter')
         speaker_embedding = (
             torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
@@ -161,6 +161,9 @@ async def predict_streaming_generator(parsed_input: dict = Body(...)):
                 yield chunk.tobytes()
             else:
                 yield chunk.tobytes()
+    finally:
+        print('Generator: Releasing semaphore')
+        acquired_semaphore.release()
 
 
 # @app.post("/tts_stream")
@@ -170,8 +173,14 @@ async def predict_streaming_generator(parsed_input: dict = Body(...)):
 #         media_type="audio/wav",
 #     )
 @app.post("/tts_stream")
-def predict_streaming_endpoint(parsed_input: StreamingInputs):
-    return StreamingResponse(
-            predict_streaming_generator(parsed_input),
+async def predict_streaming_endpoint(parsed_input: StreamingInputs):
+    await semaphore.acquire()
+    print('enter')
+    try:
+        return StreamingResponse(
+            predict_streaming_generator(parsed_input, semaphore),
             media_type="audio/wav",
         )
+    except Exception as e:
+        semaphore.release()  # Ensure semaphore is released in case of error
+        raise HTTPException(status_code=500, detail=str(e))
