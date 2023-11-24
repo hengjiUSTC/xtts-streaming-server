@@ -1,8 +1,8 @@
-from asyncio import Semaphore
 import base64
 import io
 import os
 import tempfile
+from threading import Semaphore
 from typing import List, Literal
 import wave
 
