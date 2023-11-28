@@ -77,9 +77,9 @@ def predict_speaker(wav_file: UploadFile):
 
 def postprocess(wav):
     """Post process the output waveform"""
-    if isinstance(wav, list):
-        wav = torch.cat(wav, dim=0)
-    wav = wav.clone().detach().cpu().numpy()
+    # if isinstance(wav, list):
+    #     wav = torch.cat(wav, dim=0)
+    # wav = wav.clone().detach().cpu().numpy()
     wav = wav[None, : int(wav.shape[0])]
     wav = np.clip(wav, -1, 1)
     wav = (wav * 32767).astype(np.int16)
