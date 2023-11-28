@@ -153,6 +153,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
         enable_text_splitting=False,
         speed=1.2
     )
+    print('finish result')
     yield encode_audio_common(b"", encode_base64=False)
     yield postprocess(result['wav']).tobytes()
     return
