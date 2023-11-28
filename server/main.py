@@ -149,7 +149,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
         language,
         gpt_cond_latent.to(device),
         speaker_embedding.to(device),
-        stream_chunk_size=stream_chunk_size,
+        # stream_chunk_size=stream_chunk_size,
         enable_text_splitting=True,
         speed=1.2
     )
