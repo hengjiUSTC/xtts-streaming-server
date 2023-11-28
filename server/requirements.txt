@@ -1,4 +1,4 @@
-# TTS @ git+https://github.com/coqui-ai/TTS@29dede20d336c8250810575fcdcdbbcad8c40a44
+TTS
 uvicorn[standard]==0.23.2
 fastapi==0.95.2
 pydantic==1.10.13

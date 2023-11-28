@@ -145,7 +145,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
     add_wav_header = parsed_input.add_wav_header
 
 
-    chunks = model.inference_stream(
+    result = model.inference(
         text,
         language,
         gpt_cond_latent,
@@ -154,7 +154,9 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
         enable_text_splitting=True,
         speed=1.2
     )
-
+    yield encode_audio_common(b"", encode_base64=False)
+    yield result['wav'].tobytes()
+    return
     for i, chunk in enumerate(chunks):
         chunk = postprocess(chunk)
         if i == 0 and add_wav_header:
@@ -172,16 +174,11 @@ def streaming_wrapper(lock, streaming_generator):
         # Release the semaphore when streaming is done
         lock.release()
 
-# @app.post("/tts_stream")
-# def predict_streaming_endpoint(parsed_input: StreamingInputs):
-#     return StreamingResponse(
-#         predict_streaming_generator(parsed_input),
-#         media_type="audio/wav",
-#     )
+
 @app.post("/tts_stream")
 def predict_streaming_endpoint(parsed_input: StreamingInputs):
     # Acquire the semaphore
-    lock.acquire()
+    # lock.acquire()
     # Wrap the original generator
     wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
 
