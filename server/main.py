@@ -143,7 +143,8 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
 
     stream_chunk_size = int(parsed_input.stream_chunk_size)
     add_wav_header = parsed_input.add_wav_header
-
+    gpt_cond_latent.to(device)
+    speaker_embedding.to(device)
 
     result = model.inference(
         text,
