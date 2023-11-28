@@ -154,7 +154,7 @@ def predict_streaming_generator(parsed_input: dict = Body(...)):
         speed=1.2
     )
     yield encode_audio_common(b"", encode_base64=False)
-    yield result['wav'].tobytes()
+    yield postprocess(result['wav']).tobytes()
     return
     for i, chunk in enumerate(chunks):
         chunk = postprocess(chunk)
