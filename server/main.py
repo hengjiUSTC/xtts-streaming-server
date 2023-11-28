@@ -30,14 +30,17 @@ model_path = '/home/ubuntu/XTTS-v2/'
 
 # Create a lock
 lock = Lock()
-
+TOTAL = 3
 
 print("Loading XTTS",flush=True)
 config = XttsConfig()
 config.load_json(os.path.join(model_path, "config.json"))
-model = Xtts.init_from_config(config)
-model.load_checkpoint(config, checkpoint_dir=model_path, eval=True, use_deepspeed=True)
-model.to(device)
+models = []
+for i in range(TOTAL):
+    model = Xtts.init_from_config(config)
+    model.load_checkpoint(config, checkpoint_dir=model_path, eval=True, use_deepspeed=True)
+    model.to(device)
+    models.append(model)
 print("XTTS Loaded.",flush=True)
 
 print("Running XTTS Server ...",flush=True)
@@ -131,7 +134,7 @@ class StreamingInputs(BaseModel):
     stream_chunk_size: str = "20"
 
 
-def predict_streaming_generator(parsed_input: dict = Body(...)):
+def predict_streaming_generator(model, parsed_input: dict = Body(...)):
     speaker_embedding = (
         torch.tensor(parsed_input.speaker_embedding).unsqueeze(0).unsqueeze(-1)
     )
@@ -175,13 +178,16 @@ def streaming_wrapper(lock, streaming_generator):
         # lock.release()
         pass
 
+model_idx = 0
 
 @app.post("/tts_stream")
 def predict_streaming_endpoint(parsed_input: StreamingInputs):
+    global model_idx
+    print(f'enter {model_idx}')
     # Acquire the semaphore
     # lock.acquire()
     # Wrap the original generator
-    wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(parsed_input))
-
+    wrapped_generator = streaming_wrapper(lock, predict_streaming_generator(models[model_idx], parsed_input))
+    model_idx += 1
     # Create a StreamingResponse with the wrapped generator
     return StreamingResponse(wrapped_generator, media_type="audio/wav")
