@@ -61,18 +61,24 @@ def predict_speaker(wav_file: UploadFile):
     #         temp_audio_name
     #     )
     lock.acquire()
-    with tempfile.NamedTemporaryFile(delete=True) as temp:
-        temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
-        temp.flush()  # Ensure all data is written to the file
-        gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
-            temp.name
-        )
-    result = {
-        "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
-        "speaker_embedding": speaker_embedding.cpu().squeeze().half().tolist(),
-    }
-    lock.release()
-    return result
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            temp.write(io.BytesIO(wav_file.file.read()).getbuffer())
+            temp.flush()  # Ensure all data is written to the file
+            temp_path = temp.name
+
+        gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(temp_path)
+
+        # Clean up the temporary file
+        os.remove(temp_path)
+
+        result = {
+            "gpt_cond_latent": gpt_cond_latent.cpu().squeeze().half().tolist(),
+            "speaker_embedding": speaker_embedding.cpu().squeeze().half().tolist(),
+        }
+        return result
+    finally:
+        lock.release()
 
 
 def postprocess(wav):
